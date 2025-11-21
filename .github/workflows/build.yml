@@ -1,56 +1,57 @@
 name: Build ZMK UF2
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
-
-env:
-  BOARD: nice_nano_v2
-  ZMK_CONFIG: config/pncateho-custom1.conf
-  ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/zephyr-sdk-0.17.4
-  ZEPHYR_TOOLCHAIN_VARIANT: zephyr
-  ZEPHYR_BASE: ${{ github.workspace }}/zmk-source/zephyr
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      BOARD: nice_nano_v2
+      ZMK_CONFIG: config/pncateho-custom1.conf
+      ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/zephyr-sdk-0.17.4
+      ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+      ZEPHYR_BASE: ${{ github.workspace }}/zmk-source/zephyr
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repo
       uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y dtc cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
+        sudo apt install -y device-tree-compiler cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
 
-    - name: Upgrade pip
+    - name: Install Python requirements
       run: |
         python3 -m pip install --upgrade pip
+        python3 -m pip install -r zmk-source/zephyr/scripts/requirements.txt
 
-    - name: Download Zephyr SDK
+    - name: Download and extract Zephyr SDK
       run: |
         wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
         tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
-        echo "ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR}" >> $GITHUB_ENV
+        ./zephyr-sdk-0.17.4_linux-x86_64/setup.sh -- -d $ZEPHYR_SDK_INSTALL_DIR
+        echo "ZEPHYR_SDK_INSTALL_DIR=$ZEPHYR_SDK_INSTALL_DIR" >> $GITHUB_ENV
 
-    - name: Clone ZMK
+    - name: Initialize Zephyr workspace
       run: |
-        git clone --branch main https://github.com/zmkfirmware/zmk.git zmk-source
         cd zmk-source
-        git submodule update --init --recursive
+        west init -l .
+        west update
+        west zephyr-export
 
-    - name: Build UF2
+    - name: Build firmware
       run: |
         cd zmk-source
         mkdir -p build
         cd build
-        cmake -B . -S ../app -DBOARD=${BOARD} -DZMK_CONFIG=${{ env.ZMK_CONFIG }}
+        cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=$GITHUB_WORKSPACE/$ZMK_CONFIG
         ninja
 
-    - name: Upload UF2 artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: pncateho-uf2
-        path: zmk-source/build/zephyr/*.uf2
-
+    - name: Copy UF2
+      run: |
+        cp build/zephyr/zmk.uf2 $GITHUB_WORKSPACE
 
