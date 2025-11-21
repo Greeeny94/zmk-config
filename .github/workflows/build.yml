@@ -1,13 +1,15 @@
-name: Build ZMK UF2
+name: ZMK Build
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+
     env:
       BOARD: nice_nano_v2
       ZMK_CONFIG: config/pncateho-custom1.conf
@@ -16,25 +18,21 @@ jobs:
       ZEPHYR_BASE: ${{ github.workspace }}/zmk-source/zephyr
 
     steps:
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y device-tree-compiler cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
-
-    - name: Install Python requirements
-      run: |
+        sudo apt install -y dtc cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
         python3 -m pip install --upgrade pip
-        python3 -m pip install -r zmk-source/zephyr/scripts/requirements.txt
+        python3 -m pip install west pyelftools
 
-    - name: Download and extract Zephyr SDK
+    - name: Download Zephyr SDK 0.17.4
       run: |
         wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
         tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
         ./zephyr-sdk-0.17.4_linux-x86_64/setup.sh -- -d $ZEPHYR_SDK_INSTALL_DIR
-        echo "ZEPHYR_SDK_INSTALL_DIR=$ZEPHYR_SDK_INSTALL_DIR" >> $GITHUB_ENV
 
     - name: Initialize Zephyr workspace
       run: |
@@ -48,10 +46,13 @@ jobs:
         cd zmk-source
         mkdir -p build
         cd build
-        cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=$GITHUB_WORKSPACE/$ZMK_CONFIG
+        cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=${{ github.workspace }}/$ZMK_CONFIG
         ninja
 
-    - name: Copy UF2
-      run: |
-        cp build/zephyr/zmk.uf2 $GITHUB_WORKSPACE
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: zmk-firmware
+        path: zmk-source/build/zephyr/zmk.uf2
+
 
