@@ -19,17 +19,24 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-pip ninja-build git wget
+          sudo apt install -y python3-pip ninja-build git wget cmake gperf ccache dtc
           pip3 install west
 
       - name: Clone ZMK
         run: |
           git clone --recursive https://github.com/zmkfirmware/zmk.git zmk-source
+          cd zmk-source
+          west init -l app
+          west update
+          west zephyr-export
 
-      - name: Build firmware
+      - name: Build firmware via CMake
         run: |
           cd zmk-source
-          west build -s app -b nice_nano_v2 -- -DZMK_CONFIG=/home/runner/work/zmk-config/zmk-config/config/pncateho-custom1.conf
+          mkdir -p build
+          cd build
+          cmake -B . -S ../app -DBOARD=nice_nano_v2 -DZMK_CONFIG=/home/runner/work/zmk-config/zmk-config/config/pncateho-custom1.conf
+          ninja
 
       - name: Upload UF2
         uses: actions/upload-artifact@v4
