@@ -1,0 +1,37 @@
+name: Build ZMK Firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install West & dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip ninja-build gperf dfu-util cmake
+          pip install west
+
+      - name: Init Zephyr workspace
+        run: |
+          west init -l config
+          west update
+          west zephyr-export
+          pip install -r zephyr/scripts/requirements.txt
+
+      - name: Build firmware (nice!nano)
+        run: |
+          west build -s zmk/app -d build -b nice_nano -- -DZMK_CONFIG=./config
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: zmk_firmware
+          path: build/zephyr/zmk.uf2
