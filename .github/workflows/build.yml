@@ -1,4 +1,4 @@
-name: ZMK Build
+name: Build ZMK UF2
 
 on:
   push:
@@ -10,44 +10,52 @@ jobs:
   build:
     runs-on: ubuntu-24.04
 
+    env:
+      BOARD: nice_nano_v2
+      ZMK_CONFIG: config/pncateho-custom1.conf
+      ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/zephyr-sdk-0.17.4
+
     steps:
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y git cmake ninja-build gperf ccache dfu-util device-tree-compiler wget python3-pip python3-setuptools python3-wheel
+        sudo apt-get install -y git cmake ninja-build gperf ccache dfu-util device-tree-compiler wget python3-pip python3-setuptools python3-wheel python3-dev
 
-    - name: Install Python requirements
-      run: |
-        pip3 install --upgrade pip
-        pip3 install -r zmk-source/zephyr/scripts/requirements.txt
-
-    - name: Install Zephyr SDK v0.17.4
+    - name: Download and extract Zephyr SDK
       run: |
         wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
-        tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz -C $HOME
-        echo "ZEPHYR_SDK_INSTALL_DIR=$HOME/zephyr-sdk-0.17.4_linux-x86_64" >> $GITHUB_ENV
+        tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
+        ./zephyr-sdk-0.17.4_linux-x86_64/setup.sh -- -d $ZEPHYR_SDK_INSTALL_DIR
 
-    - name: Set Zephyr base
+    - name: Set Zephyr environment variables
       run: |
-        cd zmk-source
-        west init -l .
-        west update
-        west zephyr-export
+        echo "ZEPHYR_SDK_INSTALL_DIR=${ZEPHYR_SDK_INSTALL_DIR}" >> $GITHUB_ENV
+        echo "ZEPHYR_TOOLCHAIN_VARIANT=zephyr" >> $GITHUB_ENV
+        echo "ZEPHYR_BASE=${GITHUB_WORKSPACE}/zmk-source/zephyr" >> $GITHUB_ENV
+
+    - name: Clone ZMK source
+      run: |
+        git clone --branch main --depth 1 https://github.com/zmkfirmware/zmk.git zmk-source
 
     - name: Build firmware
       run: |
         cd zmk-source
         mkdir -p build
         cd build
-        cmake -B . -S ../app -DBOARD=nice_nano_v2 -DZMK_CONFIG=$GITHUB_WORKSPACE/config/pncateho-custom1.conf
+        cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=${{ github.workspace }}/$ZMK_CONFIG
         ninja
 
-    - name: Archive firmware
+    - name: Copy UF2 artifact
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/artifacts
+        cp build/zephyr/*.uf2 $GITHUB_WORKSPACE/artifacts/
+
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: zmk-uf2
-        path: zmk-source/build/zephyr/zmk.uf2
+        name: pncateho-left.uf2
+        path: artifacts/*.uf2
 
