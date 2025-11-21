@@ -1,0 +1,14 @@
+/*
+ * pncateho.keymap
+ */
+
+&kp RSHIFT &kp KC_GREATER
+&kp RSHIFT &kp KC_SLASH
+&kp LALT &kp KC_S
+&kp LALT &kp KC_M
+&kp LALT &kp KC_L
+&kp LSHIFT &kp LALT
+&kp KC_LESS
+&kp KC_GREATER
+&kp KC_BSPACE
+&kp KC_SPACE

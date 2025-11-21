@@ -1,0 +1,27 @@
+/*
+ * pncateho-custom1.overlay
+ */
+
+#include "pncateho.dtsi"
+
+&sk {
+    release-after-ms = <500>;
+    quick-release;
+};
+
+{
+  combos {
+    compatible = "zmk,combos";
+  };
+
+  keymap {
+    compatible = "zmk,keymap";
+
+    default_layer {
+      bindings = < 
+        &none &none &none &none &none &none &none &none
+        &none &none
+      >;
+    };
+  };
+};
