@@ -13,44 +13,42 @@ jobs:
     env:
       BOARD: nice_nano_v2
       ZMK_CONFIG: config/pncateho-custom1.conf
-      ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/zephyr-sdk-0.17.4
       ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+      ZEPHYR_SDK_INSTALL_DIR: ${{ github.workspace }}/zephyr-sdk
       ZEPHYR_BASE: ${{ github.workspace }}/zmk-source/zephyr
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y dtc cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
-        python3 -m pip install --upgrade pip
-        python3 -m pip install west pyelftools
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake ninja-build gperf ccache dfu-util python3-pip python3-setuptools python3-wheel wget xz-utils
+          python3 -m pip install --upgrade pip
 
-    - name: Download and extract Zephyr SDK 0.17.4
-      run: |
-        wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
-        mkdir -p $ZEPHYR_SDK_INSTALL_DIR
-        tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz -C $ZEPHYR_SDK_INSTALL_DIR --strip-components=1
+      - name: Download Zephyr SDK
+        run: |
+          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
+          tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
+          ./zephyr-sdk-0.17.4_linux-x86_64/setup.sh -- -d $ZEPHYR_SDK_INSTALL_DIR
 
-    - name: Initialize Zephyr workspace
-      run: |
-        cd zmk-source
-        west init -l .
-        west update
-        west zephyr-export
+      - name: Install Python requirements
+        run: |
+          python3 -m pip install -r zmk-source/scripts/requirements.txt
 
-    - name: Build firmware
-      run: |
-        cd zmk-source
-        mkdir -p build
-        cd build
-        cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=${{ github.workspace }}/$ZMK_CONFIG
-        ninja
+      - name: Build firmware
+        run: |
+          cd zmk-source
+          mkdir -p build
+          cd build
+          cmake -B . -S ../app -DBOARD=$BOARD -DZMK_CONFIG=${{ github.workspace }}/$ZMK_CONFIG
+          ninja
 
-    - name: Upload firmware artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: zmk-firmware
-        path: zmk-source/build/zephyr/zmk.uf2
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zmk-firmware
+          path: zmk-source/build/zephyr/zmk.uf2
