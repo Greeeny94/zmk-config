@@ -28,11 +28,11 @@ jobs:
         python3 -m pip install --upgrade pip
         python3 -m pip install west pyelftools
 
-    - name: Download Zephyr SDK 0.17.4
+    - name: Download and extract Zephyr SDK 0.17.4
       run: |
         wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.17.4/zephyr-sdk-0.17.4_linux-x86_64.tar.xz
-        tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz
-        ./zephyr-sdk-0.17.4_linux-x86_64/setup.sh -- -d $ZEPHYR_SDK_INSTALL_DIR
+        mkdir -p $ZEPHYR_SDK_INSTALL_DIR
+        tar -xf zephyr-sdk-0.17.4_linux-x86_64.tar.xz -C $ZEPHYR_SDK_INSTALL_DIR --strip-components=1
 
     - name: Initialize Zephyr workspace
       run: |
@@ -54,5 +54,3 @@ jobs:
       with:
         name: zmk-firmware
         path: zmk-source/build/zephyr/zmk.uf2
-
-
